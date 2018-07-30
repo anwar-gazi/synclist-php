@@ -1,0 +1,61 @@
+{% extends 'common/layout.twig' %}
+{% block includes %}
+    {{ parent() }}
+    <script src="{{ get_config('config_url') }}/assets/tinymce/jquery.tinymce.min.js"></script>
+    <script src="{{ get_config('config_url') }}/assets/tinymce/tinymce.min.js"></script>
+{% endblock %}
+{% block content %}
+    <div>
+        {% if error %}
+            <div>{{ error }}</div>
+        {% endif %}
+        <form action="" method="post">
+            <div class="form-group">
+                <label for="title">title</label>
+                <input type="text" name="title" value="{{ form.title }}" id="title" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="html">content</label>
+                <textarea name="html" id="html" class="form-control">{{ form.html|raw }}</textarea>
+            </div>
+            <div class="form-group">
+                <input type="submit" name="save" value="save">
+                {% if form.id %}
+                    <input type="submit" name="delete" value="delete">
+                {% endif %}
+            </div>
+        </form>
+        {% if form.id %}
+            <div class="form-group">
+                <input type="hidden" name="label_tpl_id" id="label_tpl_id" value="{{ form.id }}">
+                <label for="orderid">#order</label><input type="text" name="orderid" id="orderid">
+                <button type="button" name="render_label" id="render_label">render shipping label</button>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        (function ($) {
+            var label_tpl_id = "{{ form.id }}";
+            var label_gen_url = "{{ url('shipping/label/generate_label') }}";
+            tinymce.init({
+                selector: '#html',
+                height: 200,
+                menubar: false,
+                plugins: [
+                    'advlist autolink lists print preview',
+                    'searchreplace visualblocks code fullscreen',
+                    'table contextmenu paste code'
+                ],
+                toolbar: 'styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist outdent indent',
+                content_css: '//www.tinymce.com/css/codepen.min.css'
+            });
+            $('#render_label').click(function (event) {
+                var orderid = $(event.target).closest('div').find('#orderid').val();
+                var url = label_gen_url + '&tpl_id=' + label_tpl_id + '&orderid=' + orderid;
+                window.location.assign(url);
+            });
+        })(jQuery);
+    </script>
+{% endblock %}

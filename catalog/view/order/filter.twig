@@ -1,0 +1,992 @@
+{% extends "common/layout.twig" %}
+{% if http_get('filter_id') %}
+    {% set filter = api('Orders/get_filter_by_id', [http_get('filter_id')]) %}
+{% endif %}
+{% block includes %}
+    {{ parent() }}
+    <script src='{{ get_config('config_url') }}/assets/jquery-ui/jquery-ui.min.js'></script>
+    <script src='{{ get_config('config_url') }}/assets/inventory/inventory-full.js'></script>
+
+    <script src='{{ get_config('config_url') }}/assets/api_request/api_request.js'></script>
+    <script src='{{ get_config('config_url') }}/assets/select2/js/select2.min.js'></script>
+    <script src='{{ get_config('config_url') }}/assets/bootstrap-tagsinput/bootstrap-tagsinput.min.js'></script>
+
+    <link href='{{ get_config('config_url') }}/assets/jquery-ui/jquery-ui.min.css' rel="stylesheet">
+    <link href='{{ get_config('config_url') }}/assets/select2/css/select2.min.css' rel="stylesheet">
+    <link href='{{ get_config('config_url') }}/assets/css/filter.css' rel="stylesheet">
+    <link href='{{ get_config('config_url') }}/assets/flag-icon-css/css/flag-icon.min.css' rel="stylesheet">
+{% endblock %}
+{% block page_title %}
+    <title>order filter</title>
+{% endblock %}
+{% block content %}
+    {% block filter_ui %}
+        <div class="panel panel-default content" id="order_filter_page">
+            <div class="panel-heading">
+                {% if url_param('filter_id') %}
+                    <div id="filter_title" style="float: left; margin-right: 50px;"><h4>{{ filter.title }}</h4></div>
+                    <div id="filter_buttons">
+                        <button type="button" name="edit_filter">edit filter</button>
+                        <button type="button" name="delete_filter">delete filter</button>
+                    </div>
+                    <div class="clearfix">
+                    </div>
+                    <div id="filter_tags">
+                        <input type="text" name="filter_tags" id="filter_tags_input" data-role="tagsinput">
+                    </div>
+                {% endif %}
+            </div>
+            <div class="panel-body">
+                <div id="filter_management" {% if filter %} style="display: none;" {% endif %} >
+                    <div id="filter_stack">
+                        <div class="rule_box">
+                            <label>Local Status</label>
+                            <select name="local_status" class="filter_rule" title=""></select>
+                        </div>
+                        <div class="rule_box">
+                            <label>remote provider</label>
+                            <select name="remote_provider" title="">
+                                <option value=''>any</option>
+                                {% for provider in remote_providers %}
+                                    <option value="{{ provider }}">{{ provider }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="rule_box line-item">
+                            <label>orderline item</label>
+                            <select name="orderline_item_exclusivity_flag" title="">
+                                <option value=""></option>
+                                <option value="exclusively">exclusively</option>
+                            </select>
+                            <select name="orderline_ItemID" class="filter_rule" title="">
+                                <option value="">any item</option>
+                                {% for provider, listing_items in items %}
+                                    <optgroup label="{{ provider }}">
+                                        {% for item in listing_items %}
+                                            <option value="{{ item.itemid }}">{{ item.title }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                            <label> with quantity</label>
+                            <input type="text" name="orderline_item_quantity" class="filter_rule exact" title="">
+                            <input type="text" name="orderline_item_quantity_min" class="filter_rule min"
+                                   placeholder="min" title="">
+                            <input type="text" name="orderline_item_quantity_max" class="filter_rule max"
+                                   placeholder="max" title="">
+                        </div>
+                        <div class="rule_box">
+                            <label for="">order total(USD)</label>
+                            <input type="text" name="order_total_min" class="filter_rule" placeholder="min">
+                            <input type="text" name="order_total_max" class="filter_rule" placeholder="max">
+                        </div>
+                        <div class="rule_box">
+                            <label for="">requested shipping</label>
+                            <select name="shipping_service" class="filter_rule" title="">
+                                <option value="">any</option>
+                                {% for name in shipping_services %}
+                                    <option value="{{ name }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="rule_box">
+                            <label for="">payment status</label>
+                            <select name="payment_status" class="filter_rule" title="">
+                                <option value="">any</option>
+                                <option value="paid">paid</option>
+                                <option value="not-paid">not paid</option>
+                            </select>
+                        </div>
+                        <div class="rule_box">
+                            <label>shipment status</label>
+                            <select name="shipment_status" title="">
+                                <option value="">any</option>
+                                <option value="shipped">shipped</option>
+                                <option value="not-shipped">not-shipped</option>
+                            </select>
+                        </div>
+                        <div class="rule_box">
+                            <label>buyer country</label>
+                            <select name="buyer_country" title="">
+                                <option value="">any</option>
+                                {% for country in buyer_countries %}
+                                    <option value="{{ country }}">{{ country }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <hr>
+                    <button type="button" name="new_group">new group</button>
+                    <div id="filter_rules" class="small"></div>
+                    <button type="button" name="apply_filter" style="display: none;">show filter result</button>
+                    <button type="button" name="save_filter" style="display: none;">save filter</button>
+                </div>
+                <!-- show filtered result orders -->
+                <div id="orders_listing" style="padding-top: 50px;">
+                    <!-- populate filter result orders here -->
+                    <table id="orders_listing_table" class="table table-bordered table-hover" style="display:none"
+                           data-filter_id="{{ filter.id }}">
+                        <thead>
+                        <tr>
+                            <th>select</th>
+                            <th>view</th>
+                            <th>remote</th>
+                            <th style="cursor: pointer" class="sortbyCreatedTime"><i class="fa fa-sort"></i>Date</th>
+                            <th>order#</th>
+                            <th>store status</th>
+                            <th>local status</th>
+                            <th>Seller</th>
+                            <th>Transactions</th>
+                            <th>Total</th>
+                            <th>Buyer</th>
+                            <th>Street Address</th>
+                            <th>address validation</th>
+                            <th>shipped</th>
+                            <th>shipping label print</th>
+                            <th>Note</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endblock %}
+    <div class="hidden-code" style="display: none">
+    </div>
+{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        /* global _ */
+        /* global s */
+        /* global Inventory */
+        /* global moment */
+        /* global SLAPIRequest */
+        /* global display */
+        /* global channel_always_on */
+        //channel_always_on.stop_auto();
+        (function ($) {
+            var helpers = (function ($) {
+                var functions = [];
+
+                $.fn.removable = function () {
+                    var elem = this;
+                    $(elem).addClass('removable-parent');
+
+                    var rem_butt = $('<i class="glyphicon glyphicon-remove-circle remove_parent_div" style="position: absolute; cursor: pointer; left: -20px;top: 50%; font-size: xx-small;" data-toggle="tooltip" title="remove"></i>');
+
+                    rem_butt.on('click', function (event) {
+                        $(event.target).closest('.removable-parent').remove();
+                    });
+
+                    $(elem).on('click', function (event) {
+                        event.stopPropagation();
+                        if (!$(elem).find('.remove_parent_div').length) {
+                            $(elem).prepend(rem_butt);
+                        } else {
+                            $(elem).find('.remove_parent_div').remove();
+                        }
+                    });
+                };
+
+                $.fn.show_action_pan = function (html) {
+                    var elem = this;
+                    var pan = $('<div class="order_select_actions" style="padding: 10px; position: absolute; background-color: green;z-index: 100;">' + html + '</div>');
+                    $(elem).prepend(pan);
+                    pan.css('left', '-' + (pan.outerWidth() + 10) + 'px');
+                };
+
+                /* and/or between filter sub groups or rules */
+                var clause_all_any = '' +
+                    '<div class="clause" style="position: relative; display: table; margin-top: 10px; margin-bottom: 10px; color: green;">' +
+                    'if ' +
+                    '<select name="clause">' +
+                    '<option value="all">all</option>' +
+                    '<option value="any">any</option>' +
+                    '</select>' +
+                    ' of the following conditions met' +
+                    '</div>';
+                functions.clause_all_any = $(clause_all_any);
+                functions.clause_all_any.removable();
+
+                /* filter group container */
+                functions.filter_group_div = $('<div class="filter_group" style="position: relative; border: 1px solid; min-height: 50px; padding: 10px; margin-top: 20px; margin-bottom: 20px;">' + '</div>');
+                functions.filter_group_div.removable();
+
+                /**
+                 * @param order
+                 * @param order.ShippingStreet1
+                 * @param order.ShippingStreet2
+                 * @param order.ShippingCityName
+                 * @param order.ShippingStateOrProvince
+                 * @param order.ShippingCountry
+                 * @param order.ShippingPostalCode
+                 */
+                functions.ship_addr = function (order) {
+                    return order.ShippingStreet1 + ' ' + order.ShippingStreet2 + ' ' + order.ShippingCityName + ' ' + order.ShippingStateOrProvince + ' ' + order.ShippingCountry + ' ' + order.ShippingPostalCode;
+                };
+                /**
+                 * @param order
+                 * @param order.verified_addr_line1
+                 * @param order.verified_addr_line2
+                 * @param order.verified_addr_city
+                 * @param order.verified_addr_state
+                 * @param order.verified_addr_country
+                 * @param order.verified_addr_zip
+                 *
+                 * */
+                functions.verified_addr = function (order) {
+                    return order.verified_addr_line1 + ' ' + order.verified_addr_line2 + ' ' + order.verified_addr_city + ' ' + order.verified_addr_state + ' ' + order.verified_addr_country + ' ' + order.verified_addr_zip;
+                };
+
+                functions.determine_addr_verif_state = function (order) {
+                    var addr_verif_state = '';
+                    switch (order.addr_verif_state) {
+                        case 'BADADDR':
+                            addr_verif_state = '<span style="color: red">bad address</span>';
+                            break;
+                        case 'HASSUGG':
+                            addr_verif_state = 'has suggestion';
+                            break;
+                        case 'NOTVERF':
+                            addr_verif_state = 'yet to verify';
+                            break;
+                        default:
+                            addr_verif_state = 'good address';
+                            break;
+                    }
+                    return addr_verif_state;
+                };
+
+                /**
+                 * @param order
+                 * @param order.id
+                 * @param order.is_combined_order
+                 * @param order.OrderID
+                 * @param order.order_hash
+                 * @param order.CreatedTime
+                 * @param order.SalesRecordNumber
+                 * @param order.OrderStatus
+                 * @param order.CheckoutStatus
+                 * @param order.eBayPaymentStatus
+                 * @param order.ShippingCountryName
+                 * @param order.ShippingPhone
+                 * @param order.ShippingService
+                 * @param order.ShippingServiceCost
+                 * @param order.ShippedTime
+                 * @param order.SellerUserID
+                 * @param order.Total
+                 * @param order.verified_addr_line1
+                 * @param order.verified_addr_message
+                 * @param order.addr_verif_state
+                 * @param order.ShippingCountry
+                 * @param order.ShippingName
+                 * @param order.shipped
+                 * @param order.label_print_time
+                 * @param order.PaidTime
+                 * @param order.PaymentMethods
+                 * @param order.BuyerUserID
+                 * @param order.note
+                 * @param order.local_status
+                 * @param {string} order.listing_provider
+                 * @param order.seller
+                 * @param order.transactions
+                 * @param order.transactions.TransactionID
+                 * @param order.transactions.QuantityPurchased
+                 * @param order.transactions.Title
+                 * @param order.transactions.ItemID
+                 * @param order.transactions.pic_url
+                 * @param order.transactions.TransactionPrice
+                 * */
+                functions.compile_order_listing_row = function (order) {
+                    var trans_td = order.transactions.length + ' ' + 'transaction' + (order.transactions.length > 1 ? 's' : '');
+                    var border = '';
+                    if (order.shipped != 1) {
+                        border = 'style="font-weight: bold;"';
+                    }
+                    var combine_icon = '';
+                    if (order.is_combined_order) {
+                        combine_icon = '<i class="fa fa-list"></i>';
+                    } else {
+                        combine_icon = '';
+                    }
+                    return '<tr class="order-listing-row" data-order_id="' + order.id + '" ' + border + ' data-is_combined_order=' + (order.is_combined_order ? 1 : 0) + '>' +
+                        '<td><div class="select_order_container" style="position: relative;">' +
+                        '<input type="checkbox" class="select_order" name="select_order[]" value="' + order.id + '" data-toggle="orderinfo_popup">' +
+                        '</div>' + combine_icon + '</td>' +
+                        '<td><span><button type="button" name="view_order" class="view_order">view</button></span></td>' +
+                        '<td><span class="' + order.listing_provider.toLowerCase() + '-icon remote-icon">' + order.SellerUserID + '</span></td>' +
+                        '<td><span>' + (order.CreatedTime ? moment().fromUTC(order.CreatedTime).format('MMMM Do YYYY, h:mm a') + '<br><span class="small">(' + moment().fromUTC(order.CreatedTime).fromNow() + ')</span>' : '') + '</span></td>' +
+                        '<td><span>' + order.order_hash + '</span></td>' +
+                        '<td><span>' + (order.OrderStatus ? order.OrderStatus : 'N/A') + '</span></td>' +
+                        '<td><span class="order_local_status" style="cursor: pointer">' + (order.local_status ? order.local_status : 'not available') + '</span></td>' +
+                        '<td><span>' + order.SellerUserID + '</span></td>' +
+                        '<td>' + trans_td + '</td>' +
+                        '<td><span>' + order.Total + '</span></td>' +
+                        '<td><span>' + order.ShippingName + '</span></td>' +
+                        '<td>' +
+                        '<i class="flag-icon flag-icon-' + order.ShippingCountry.toLowerCase() + '" style="position: absolute"></i>' +
+                        '<div style="padding-left: 30px">' + functions.ship_addr(order) + '</div>' +
+                        '</td>' +
+                        '<td><span>' + functions.determine_addr_verif_state(order) + '</span></td>' +
+                        '<td><span>' + ((order.shipped == 1) ? 'shipped' : 'not shipped') + '</span></td>' +
+                        '<td><span>' + (order.label_print_time ? moment().fromUTC(order.label_print_time).fromNow() : '') + '</span></td>' +
+                        '<td><span>' + (order.note ? '<i class="glyphicon glyphicon-comment"></i>' : '') + '</span></td>' +
+                        '</tr>';
+                };
+
+                // view an order details
+                functions.compile_order_view = function (order) {
+                    var html = '';
+                    html = html +
+                        '<div class="order_modal panel panel-default" data-order_id="' + order.id + '">' +
+                        '<div class="panel-heading"><p>order#: ' + order.order_hash + '</p></div>' +
+                        '<div class="panel-body">' +
+                        '<table class="table">' +
+                        '<tr><td>create time</td><td>' + moment().fromUTC(order.CreatedTime).fromNow() + '</td></tr>' +
+                        '<tr>' +
+                        '<td valign="top">status</td>' +
+                        '<td>' +
+                        'Order <span class="' + ((order.OrderStatus === 'Completed') ? 'text-success' : '') + '">' + order.OrderStatus + '</span><br>' +
+                        'Checkout <span class="' + ((order.CheckoutStatus === 'Complete') ? 'text-success' : '') + '">' + order.CheckoutStatus + '</span><br>' +
+                        'eBay payment <span class="' + ((order.eBayPaymentStatus === 'NoPaymentFailure') ? 'text-success' : '') + '">' + order.eBayPaymentStatus + '</span><br>' +
+                        'Shipping <span class="' + ((order.ShippedTime) ? 'text-success' : '') + '">' + (order.ShippedTime ? moment().fromUTC(order.ShippedTime).fromNow() : 'NA') + '</span><br>' +
+                        '</td>' +
+                        '</tr>' +
+                        '<tr><td>Seller account</td><td>' + order.SellerUserID + '</td></tr>' +
+                        '<tr><td>note</td><td>' + order.note + '</td></tr>' +
+                        '</table>' +
+                        '</div>' +
+                        '</div>';
+
+                    /* buyer info */
+                    html = html +
+                        '<div class="panel panel-default">' +
+                        '<div class="panel-heading"><p>Buyer Information</p></div>' +
+                        '<div class="panel-body">' +
+                        '<table class="table">' +
+                        '<tr><td valign="top">Customer Info</td><td>Name: ' + order.ShippingName + '</td></tr>' +
+                        '<tr><td valign="top">email</td><td>' + order.transactions[0]['BuyerEmail'] + '</td></tr>' +
+                        '<tr><td valign="top">Shipping Address</td><td>street1:' + order.ShippingStreet1 + ', street2:' + order.ShippingStreet2 + ' city:' + order.ShippingCityName + ', state:' + order.ShippingStateOrProvince + ', countrycode:' + order.ShippingCountry + ', country:' + order.ShippingCountryName + ', phone:' + order.ShippingPhone + ', postcode:' + order.ShippingPostalCode + '</td></tr>' +
+                        '</table>' +
+                        '</div>' +
+                        '</div>';
+
+                    /* shipping and handling informations panel */
+                    html = html +
+                        '<div class="panel panel-default">' +
+                        '<div class="panel-heading"><p>Shipping &amp; Handling informationM</p></div>' +
+                        '<div class="panel-body">' +
+                        '<table class="table">' +
+                        '<tr><td>Shipping Service</td><td>' + order.ShippingService + '</td></tr>' +
+                        '<tr><td>Shipping cost</td><td>' + order.ShippingServiceCost + '</td></tr>' +
+                        '</table>' +
+                        '</div>' +
+                        '</div>';
+
+                    /* payment and transactions */
+                    html = html +
+                        '<div class="panel panel-default">' +
+                        '<div class="panel-heading"><p>Payment Information</p></div>' +
+                        '<div class="panel-body">' +
+                        '<table class="table">' +
+                        '<tr><td>Order Currency</td><td>USD</td></tr>' +
+                        '<tr><td>Payment Date</td><td>' + order.PaidTime + '</td></tr>' +
+                        '<tr><td>Payment Method</td><td>' + order.PaymentMethods + '</td></tr>' +
+                        '<tr><td>Buyer username</td><td>' + order.BuyerUserID + '</td></tr>' +
+                        '<tr><td>Order Total</td><td>' + order.Total + '</td></tr>' +
+                        '</table>' +
+                        '<h6>External Transactions</h6>' +
+                        '<table class="table table-striped table-bordered">' +
+                        '<tr><td>item image</td><td>Item</td><td>Quantity @Price</td><td>buyer</td></tr>';
+                    var i;
+                    for (i in order.transactions) {
+                        var trans = order.transactions[i];
+                        html = html +
+                            '<tr>' +
+                            '<td><img src=' + trans.pic_url + ' alt="item-image"></td>' +
+                            '<td>#' + trans.ItemID + ' ' + trans.Title + '</td><td>' + trans.QuantityPurchased + ' @' + trans.TransactionPrice + 'USD</td><td>' + order.ShippingName + '</td></tr>';
+                    }
+                    html = html + '</table></div></div>';
+
+                    /* now enclose them inside a modal */
+                    return '<div class="modal fade container-fluid" tabindex="-1" role="dialog" style="overflow-y: scroll" data-backdrop="static"><div class="modal-dialog"><div class="modal-content">' + html + '<div class="modal-footer">' +
+                            /*
+                             // show the label print time, and history remove button
+                             '<div class="pull-left">' +
+                             // show the label print button with adjusted text
+                             ' <button type="button" class="btn btn-default pull-left preview_shipping_label" data-order_id="' + order.id + '"><span class="fa fa-print"></span> ' + (order.label_print_time ? 'print again' : 'print shipping label') + '</button>' +
+                             '</div>' +
+                             */
+                        '<button type="button" class="btn btn-default" data-dismiss="modal" name="close"><span class="fa fa-times"></span></button>' +
+                        '</div>' +
+                        '</div></div></div>';
+                };
+
+                functions.show_order_popup = function (order_id) {
+                    channel_always_on.get('get_order', [order_id], function (order) {
+                        if (window.show_order_popup != order_id) {
+                            return false;
+                        }
+                        var html = "<div id='orderinfopopup' class='small panel panel-default' style='position: fixed; right: 0; top: 0; width: 40vw; max-height: 40vh; background-color: #F0F8FF; z-index: 1000;' data-order_id='" + order_id + "'>";
+                        html += '<div class="panel-heading" style="padding: 0"><b>Items</b></div>';
+                        html += '<div class="panel-body" style="padding: 0">';
+                        html += '<table>';
+                        html += '<tr><td><b>Name</b></td><td><b>Qty</b></td></tr>';
+                        var i;
+                        for (i in order.transactions) {
+                            var trans = order.transactions[i];
+                            html = html +
+                                '<tr>' +
+                                '<td>' + trans.Title + '</td>' +
+                                '<td>' + trans.QuantityPurchased + '</td>' +
+                                '</tr>';
+                        }
+                        html += '</table>';
+                        html += '</div>';
+                        html += '</div>';
+                        $('body').append(html);
+                    });
+                };
+                functions.close_order_popup = function () {
+                    $('#orderinfopopup').remove();
+                };
+                functions.select_order_row = function (tr) {
+                    $(tr).addClass('active');
+                };
+                functions.unselect_order_rows = function () {
+                    $('tr.order-listing-row').each(function (i, tr) {
+                        $(tr).removeClass('active');
+                    });
+                };
+
+                functions.compile_shipping_label = function (tpl, order) {
+                    var context_more = {
+                        'shipping_address': functions.ship_addr(order),
+                        'verified_shipping_address': functions.verified_addr(order)
+                    };
+                    /* our custom variables */
+                    $.each(context_more, function (key, val) {
+                        tpl = tpl.replace('{{ '+key+' }}', val);
+                    });
+                    /* we support all fields of order be template variable */
+                    $.each(order, function (key, val) {
+                        switch (key) {
+                            case 'SalesRecordNumber':
+                                tpl = tpl.replace('{{ '+key+' }}', '*' + val + '*'); //for barcode scanner
+                                break;
+                            default:
+                                tpl = tpl.replace('{{ '+key+' }}', val);
+                                break;
+                        }
+                    });
+                    return tpl;
+                };
+
+                functions.generate_print_window = function (html) {
+                    var disp_setting = "toolbar=yes,location=no,directories=yes,menubar=yes,";
+                    disp_setting += "scrollbar=yes,width=780,height=780,left=100,top=25";
+                    var docprint = window.open("about:blank", "_blank", disp_setting);
+                    docprint.document.open();
+                    docprint.document.write("<html><head><title>print</title>");
+                    docprint.document.write("</head><body>");
+                    docprint.document.write(html);
+                    docprint.document.write("</body></html>");
+                    docprint.document.close();
+                    docprint.print();
+                    docprint.close();
+                };
+
+                functions.drop_rule_box = function (new_rule_box, group) {
+                    //some rules already there, so append a cordelause first
+                    if (!$(group).find('div.rule_box').length) {
+                        $(group).append(helpers.clause_all_any.clone(true));
+                    }
+
+                    //now accept(and clone) dragged filter rule
+                    new_rule_box.removable();
+                    new_rule_box.appendTo($(group));
+                };
+
+                functions.add_new_filter_group = function () {
+                    $('div#filter_rules').append(function () {
+                        $('[name="apply_filter"]').show();
+                        $('[name="save_filter"]').show();
+
+                        if (!$(this).find('div.filter_group').length) {//if there were no groups then add a clause first
+                            $(this).append(helpers.clause_all_any.clone(true));
+                        } else {
+                            $(this).append('<div style="position: relative; display: table; margin-left: 50px;" class="clause">and' + '</div>');
+                        }
+                        /* now this newly added group should accept dragged filter rule */
+                        var group = helpers.filter_group_div.clone(true);
+                        group.css('margin-left', '50px');//each grup is indented
+                        return group.droppable({
+                            drop: function (event, source_rule_box) { //incoming filter rule
+                                functions.drop_rule_box(source_rule_box.draggable.clone(true), this);
+                            }
+                        });
+                    });
+                };
+                // clone a rule box to build your filter
+                functions.get_rule_box_clone = function (rule_name) {
+                    var target_rule_box = '';
+                    $('div#filter_stack div.rule_box').each(function (i, rule_box) {
+                        var selector = '[name="' + rule_name + '"]';
+                        if ($(rule_box).find(selector).length) {
+                            target_rule_box = $(rule_box).clone();
+                        }
+                    });
+                    return target_rule_box;
+                };
+                // make a filter object visual
+                functions.draw_filter = function (filter) {
+                    $.each(filter.groups, function (gi, group) {
+                        $('[name="new_group"]').click();
+                        var added_group_elem = $('div#filter_rules div.filter_group:last');
+                        $.each(group.rules, function (i, rule_box) {
+                            var rule_box_div = functions.get_rule_box_clone(Object.keys(rule_box)[0]);
+                            $.each(rule_box, function (rule_name, rule_value) {
+                                var selector = '[name="' + rule_name + '"]';
+                                $(rule_box_div).find(selector).val(rule_value);
+                            });
+                            functions.drop_rule_box(rule_box_div, added_group_elem);
+                        });
+                        $('div#filter_rules div.filter_group:last div.clause select').val(group.clause);
+                    });
+                    $('div#filter_rules>div.clause select').val(filter.clause);
+                };
+
+                /**
+                 *
+                 * @param {string} selector
+                 * @param {function(this:ReactiveElement)} factory
+                 */
+                functions.ReactiveElement = function (selector, factory) {
+                    /** @type {jQuery} */
+                    var container = $(selector);
+
+                    /**
+                     *
+                     * @returns {jQuery}
+                     */
+                    this.element = function () {
+                        return container;
+                    };
+
+                    factory.bind(this)();
+                };
+
+                return functions;
+            })(jQuery);
+
+            var request = api("{{ url('api/synclist') }}");
+            var dt = ''; //our datatable
+            var loading = Inventory.module("page_loading");
+
+            $('div#filter_stack div.rule_box').draggable({
+                helper: 'clone'
+            });
+
+            // apply a filter and list the result orders
+            // filter is sent to server and server returns result
+            //this function changes some external state variables
+            var show_filtered_orders = function (filter, pagenum) {
+                if (!pagenum) {
+                    pagenum = 1;
+                }
+                $('#order_search').show();
+                var table = $('div#orders_listing table');
+                table.show();
+                dt = Inventory.module('dataTable2')($('div#orders_listing table'))
+                    .add_search_bar(function () {
+                        return '<div id="order_search">\
+                        <select name="type" title="type">\
+                        <option value=""></option>\
+                        <option value="order_hash">order#</option>\
+                        <option value="local_order_id">local order#</option>\
+                        <option value="buyer_name">buyer name</option>\
+                        <option value="buyer_ebay_username">buyer ebay username</option>\
+                        </select>\
+                        <input type="text" name="search" title="search" >\
+                        </div>';
+                    })
+                    .row_builder(helpers.compile_order_listing_row)
+                    .ajax_paginator(function (start_index, end_index, callback) {
+                        /**
+                         * @param resp
+                         * @param resp.result
+                         * @param resp.result.orders
+                         * @param resp.result.total_orders_count
+                         * */
+                        channel_always_on.get('filter_orders', [filter, start_index, end_index], function (resp) {
+                            callback(resp.orders, resp.total_orders_count);
+                        });
+                    });
+
+                dt.show(pagenum);
+            };
+            //END helpers
+
+            /* view an order details in modal */
+            $(document).on('click', '.remove_label_print_entry', function (event) {
+                var OrderID = $(event.target).closest('tr').attr('data-order_id');
+                if (!OrderID) {
+                    alert("cannot remove, OrderID parse failed");
+                    return false;
+                }
+                loading.show();
+                request("EbayOrders", "remove_label_print_history", [OrderID], function () {
+                    console.log(OrderID + " shipping label print history removed");
+                    $(event.target).closest('span').remove();
+                    loading.hide();
+                });
+            });
+
+            var page = new helpers.ReactiveElement('#order_filter_page', function () {
+                var _this = this;
+                this.filter_in_view = null;
+                this.filter_in_view_title = null;
+                this.filter_in_view_id = "{{ url_param('filter_id') }}";
+                this.filter_in_view_sort = {CreatedTime: 'desc'};
+
+                // view a selected filter
+                var rules_js = '{% if filter %}{{ filter.rules|raw }}{% endif %}'; //json
+                if (rules_js) { //for valid
+                    _this.filter_in_view_title = '{{ filter.title }}';
+                    _this.filter_in_view = JSON.parse(rules_js);
+
+                    show_filtered_orders({filter: _this.filter_in_view, sort: _this.filter_in_view_sort});
+                }
+            });
+
+            page.filter_tags_input = new helpers.ReactiveElement('#filter_tags', function () {
+                $('#filter_tags_input').tagsinput({
+                    allowDuplicates: false
+                });
+                $(document).on('click', '.bootstrap-tagsinput .tag', function (event) {
+                    $('.bootstrap-tagsinput input').show();
+                });
+                $('input').on('beforeItemAdd', function (event) {
+                    if (!event.options || !event.options.preventPost) {
+                        channel_always_on.request('add_filter_tag', [page.filter_in_view_id, event.item], function (data, error) {
+                            if (data !== true) {
+                                event.cancel = true;
+                                alert('tag add failed! ' + error);
+                            }
+                        });
+                    }
+                }).on('beforeItemRemove', function (event) {
+                    channel_always_on.request('remove_filter_tag', [page.filter_in_view_id, event.item], function (data, error) {
+                        if (data !== true) {
+                            event.cancel = true;
+                            alert('tag remove failed! ' + error);
+                        }
+                    });
+                });
+                if (page.filter_in_view_id) {
+                    channel_always_on.get('get_filter_tags', [$('#orders_listing_table').attr('data-filter_id')], function (tags, error) {
+                        $.each(tags, function (index, tag) {
+                            $('#filter_tags_input').tagsinput('add', tag, {preventPost: true});
+                        });
+                        if (tags.length) {
+                            $('.bootstrap-tagsinput input').hide();
+                        }
+                    });
+                }
+            });
+
+            page.filter_editor = new helpers.ReactiveElement('#filter_management', function () {
+                var _this = this;
+
+                channel_always_on.listen('save_order_filter', function (data, error) {
+                    if (data) {
+                        alert('saved!');
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + error);
+                    }
+                });
+                channel_always_on.listen('delete_order_filter', function (data, error) {
+                    if (data) {
+                        alert('success!');
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + error);
+                    }
+                });
+
+                this.parse_filter_rules = function () {
+                    var groups = {
+                        groups: [],
+                        clause: $('div#filter_rules>div.clause select').val()
+                    };
+                    $('div#filter_rules div.filter_group').each(function (gi, group_div) { //each group
+                        var group = {
+                            rules: [],
+                            clause: $(group_div).find('div.clause select').val()
+                        };
+                        $(group_div).find('div.rule_box').each(function (bi, rulebox) { //each rule box
+                            var rule_box = {};
+                            $(rulebox).find('input,select').each(function (ri, rule) { //each rule input/select
+                                rule_box[$(rule).attr('name')] = $(rule).val();
+                            });
+                            group.rules.push(rule_box);
+                        });
+                        groups.groups.push(group);
+                    });
+                    return groups;
+                };
+
+                this.element().find('[name="apply_filter"]').click(function () {
+                    var filter = _this.parse_filter_rules();
+                    show_filtered_orders({filter: filter, sort: page.filter_in_view_sort});
+                });
+
+                this.element().find('[name="save_filter"]').click(function () {
+                    var filter = _this.parse_filter_rules();
+                    if (!filter.clause || !filter.groups.length) {
+                        console.log('filterlist empty');
+                        return false;
+                    }
+                    var conf = confirm("save filter: ");
+                    if (!conf) {
+                        return false;
+                    }
+                    var title = prompt("insert filter title");
+                    if (title) {
+                        channel_always_on.emit('save_order_filter', [filter, title]);
+                    }
+                });
+
+                this.element().find('[name="new_group"]').click(function () {
+                    helpers.add_new_filter_group();
+                });
+
+                $(document).on('click', '[name="edit_filter"]', function () {
+                    $(event.target).remove();
+                    $('div#filter_management').show();
+                    helpers.draw_filter(page.filter_in_view);
+                }).on('click', '[name="delete_filter"]', function () {
+                    channel_always_on.emit('delete_order_filter', [page.filter_in_view_title]);
+                });
+                $('#filter_tags_input').keydown(function (event) {
+                    var tags = $(event.target).val();
+                    var filter_id = $('#orders_listing_table').attr('data-filter_id');
+                    if (event.keyCode === 13 && tags) {
+                        alert('saving ' + tags + ' for ' + filter_id);
+                        channel_always_on.request('save_filter_tags', [filter_id, tags], function (data, error) {
+                        });
+                    }
+                })
+            });
+
+            page.filter_editor.orderline_item_box = new helpers.ReactiveElement($('.line-item'), function () {
+                //this.element().find('select[name="orderline_ItemID"]').select2({});
+                this.element().find('[name="orderline_item_exclusivity_flag"]').prop('disabled', true);
+                this.element().find('select[name="orderline_ItemID"]').change(function (event) {
+                    var val = $(event.target).val();
+                    var exclusive_tag = $(event.target).parent().find('[name="orderline_item_exclusivity_flag"]');
+
+                    if (!val) {
+                        exclusive_tag.val('');
+                        exclusive_tag.prop('disabled', true);
+                    } else {
+                        exclusive_tag.prop('disabled', false);
+                    }
+                    event.stopPropagation();
+                    return true;
+                });
+
+                this.element().find('input.filter_rule').change(function (event) {
+                    var val = $(event.target).val();
+                    var input_exact = $(event.target).parent().find('input.filter_rule.exact');
+                    var input_min = $(event.target).parent().find('input.filter_rule.min');
+                    var input_max = $(event.target).parent().find('input.filter_rule.max');
+                    if ($(event.target).hasClass('exact')) {
+                        if (val) {
+                            input_min.hide();
+                            input_max.hide();
+                        } else {
+                            input_min.show();
+                            input_max.show();
+                        }
+                    } else if ($(event.target).hasClass('min') || $(event.target).hasClass('max')) {
+                        if (!input_min.val() && !input_max.val()) {
+                            input_exact.show();
+                        } else {
+                            input_exact.hide();
+                        }
+                    }
+                });
+            });
+
+            page.order_listing = new helpers.ReactiveElement('#orders_listing', function () {
+                var checked_orders_ids = function () {
+                    return $.map($('.select_order:checked'), function (elem) {
+                        return $(elem).val();
+                    });
+                };
+
+                var local_status = '<select name="order_local_status" style="border: 0">' +
+                    '<option value=""></option>' +
+                    $.map(JSON.parse('{{ order_local_status_options|raw }}'), function (val) {
+                        return '<option value="' + val + '">' + val.replace(/_/g, ' ') + '</option>';
+                    }).join('') +
+                    '</select>';
+
+                var local_status_filter = $('#filter_stack').find('[name="local_status"]');
+                local_status_filter.append($(local_status).find('option'));
+                local_status_filter.val('');
+
+                $(document).on('change', '#order_search [name="type"]', function (event) {
+                    if ($(event.target).val()) {
+                        $('#order_search [name="search"]').focus();
+                    }
+                }).on('change', '#order_search [name="search"]', function (event) {
+                    if (!$(event.target).val()) {
+                        show_filtered_orders({
+                            filter: page.filter_in_view,
+                            sort: page.filter_in_view_sort
+                        });
+                    }
+                }).on('keydown', '#order_search [name="search"]', function (event) {
+                    if (event.keyCode === 13) { //for Enter keypress
+                        var needle = $(event.target).val();
+                        var type = $('#order_search [name="type"]').val();
+                        if (!needle) {
+                            return false;
+                        }
+                        if (!type) {
+                            notification.error("select search type");
+                            return false;
+                        }
+                        var search = {
+                            needle_type: type,
+                            needle: needle
+                        };
+                        show_filtered_orders(
+                            {
+                                filter: page.filter_in_view,
+                                search: search,
+                                sort: page.filter_in_view_sort
+                            }
+                        );
+                    }
+                }).on('click', '.order_local_status', function (event) {
+                    var elem = $(event.target);
+                    var sel = $(local_status);
+                    sel.val(elem.text());
+                    elem.hide();
+                    sel.css('width', elem.closest('td').width());
+                    elem.after(sel);
+                }).on('change', '.order-listing-row select[name="order_local_status"]', function (event) {
+                    var order_id = $(event.target).closest('tr').attr('data-order_id');
+                    var status = $(event.target).val();
+                    if (!status || !order_id) {
+                        return false;
+                    }
+                    channel_always_on.request('save_local_status', [order_id, status], function (data) {
+                        if (!data) {
+                            alert("local status update fail!");
+                        } else {
+                            var display = $(event.target).prev('.order_local_status');
+                            display.text(status);
+                            display.show();
+                            $(event.target).remove();
+                        }
+                    });
+                }).on('click', '.sortbyCreatedTime', function () {
+                    /* global filter_in_view_sort */
+                    var sort_to = page.filter_in_view_sort['CreatedTime'] === 'desc' ? 'asc' : 'desc';
+                    show_filtered_orders({filter: page.filter_in_view, sort: {'CreatedTime': sort_to}});
+                }).on('click', '.view_order', function (event) {
+                    var order_id = $(event.target).closest('tr').attr('data-order_id');
+                    channel_always_on.get('get_order', [order_id], function (order) {
+                        var html = helpers.compile_order_view(order);
+                        var order_window = $(html);
+                        order_window.modal();
+                    });
+                }).on('click', 'body', function (event) { //order info popup
+                    var order_id = $(event.target).closest('tr').attr('data-order_id');
+                    if ($(event.target).attr('data-toggle') === 'orderinfo_popup') { //show
+                        if ($(event.target).is(':checked')) {
+                            if (($('.select_order:checked').length === 1)) { //only one checked
+                                //now show
+                                window.show_order_popup = order_id;
+                                helpers.select_order_row($(event.target).closest('tr'));
+                                helpers.show_order_popup(order_id);
+                            } else { //more than one checked
+                                //prevent queue popup when quickly checked over manny
+                                window.show_order_popup = false;
+
+                                helpers.unselect_order_rows();
+                                helpers.close_order_popup();
+                            }
+                        } else { //unchecked
+                            //prevent popup when quickly checked and then unchecked
+                            window.show_order_popup = false;
+
+                            helpers.unselect_order_rows();
+                            helpers.close_order_popup();
+                        }
+                    } else { //close
+                        //inside popup, dont close
+                        if ($(event.target).closest('#orderinfopopup').length) {
+                            return;
+                        }
+                        window.show_order_popup = false;
+                        helpers.unselect_order_rows();
+                        helpers.close_order_popup();
+                    }
+                }).on('click', '.select_order', function (event) {
+                    $('.order_select_actions').remove();
+                    if (!$('.select_order:checked').length) {
+                        return;
+                    }
+                    if ($('.select_order:checked').length === 1) {
+                        if ($(event.target).closest('tr').attr('data-is_combined_order') == 1) {
+                            $('.select_order:checked').eq(0).closest('td').find('div.select_order_container').show_action_pan('<button type="button" name="uncombine_orders" class="uncombine_orders">uncombine</button>');
+                        }
+                        return;
+                    }
+                    if ($('.select_order:checked').length > 1) {
+                        channel_always_on.request('orders_are_combinable', [checked_orders_ids()], function (data) {
+                            if (data.combinable) {
+                                if (!$('.order_select_actions').length && ($('.select_order:checked').length > 1)) {
+                                    $('.select_order:checked').eq(0).closest('td').find('div.select_order_container').show_action_pan('<button type="button" name="combine_orders" class="combine_orders">combine</button>');
+                                }
+                            } else {
+                                //notification.error('cannot be combined: ' + data.cause, 5000, 'cannot_combine_notif');
+                            }
+                        });
+                        return;
+                    }
+                }).on('click', '.combine_orders', function (event) {
+                    var selected_order_ids = $.map($('.select_order:checked'), function (elem) {
+                        return $(elem).val();
+                    });
+                    channel_always_on.request('combine_orders', [selected_order_ids], function (data) {
+                        if (data) {
+                            alert('orders combined');
+                            window.location.reload();
+                        } else {
+                            alert('combine fail');
+                        }
+                    });
+                }).on('click', '.uncombine_orders', function (event) {
+                    channel_always_on.request('uncombine_orders', [checked_orders_ids()], function (data) {
+                        if (data) {
+                            alert('orders uncombined');
+                            window.location.reload();
+                        } else {
+                            alert('combine fail');
+                        }
+                    });
+                });
+            });
+
+        }(jQuery));
+    </script>
+{% endblock %}

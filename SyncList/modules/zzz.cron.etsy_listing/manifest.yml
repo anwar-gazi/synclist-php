@@ -1,0 +1,13 @@
+version: 1.0
+name: '%module_directory_name%'
+title: ''
+description: ''
+index_file: cron.etsy_listing.php
+index_class: CronEtsyListing
+require:
+    synclist_module:
+    composer:
+path:
+    root: %this_module_root%
+api_key: az8uuo7hh5vyaojy8b78eigo
+secret_key: pm1u0173uk

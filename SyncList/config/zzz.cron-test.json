@@ -1,0 +1,16 @@
+{
+    "disable_all_cron": false,
+    "cron_list": [
+        {
+            "disabled": false,
+            "classname": "testcronupdatesalesinfo",
+            "ebay_user": "hanksminerals",
+            "api_keys": "./ebaykeys_prod.json",
+            "debug": true,
+            "fetch_xml": false,
+            "save_xml": true,
+            "save_update": false,
+            "interval": "hourly @0"
+        }
+    ]
+}

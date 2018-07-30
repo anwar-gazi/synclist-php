@@ -1,0 +1,11 @@
+version: 1.0
+name: '%module_directory_name%'
+title: ''
+description: ''
+index_file: cron.etsy.orders.php
+index_class: CronEtsyOrders
+require:
+    synclist_module:
+    composer:
+path:
+    root: %this_module_root%

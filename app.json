@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "dokku": {
+      "postdeploy": "./console phinx:deploy && vendor/bin/phinx migrate"
+    }
+  }
+}

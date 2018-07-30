@@ -1,0 +1,18 @@
+{
+  "require": {
+    "php": "7.0.*",
+    "ext-mbstring": "*",
+    "ext-zip": "*",
+    "ext-dom": "*",
+    "twig/twig": "1.26",
+    "lob/lob-php": "1.4.*",
+    "robmorgan/phinx": "^0.5.3",
+    "guzzlehttp/guzzle": "^6.2",
+    "nesbot/carbon": "^1.21",
+    "symfony/console": "^3.3",
+    "czproject/git-php": "^3.9",
+    "phpunit/phpunit": "^6.3",
+    "respect/validation": "^1.1",
+    "monolog/monolog": "^1.23"
+  }
+}

@@ -1,0 +1,51 @@
+{% extends 'common/layout.twig' %}
+{% block page_title %}<title>print shipping label</title>{% endblock %}
+{% block includes %}
+    <script src="{{ asset_url('jquery/jquery-1.11.1.min.js') }}"></script>
+    <script src="{{ get_config('config_url') }}/assets/livecomm/livecomm.js"></script>
+    <script src="{{ get_config('config_url') }}/assets/monitor/monitor.js"></script>
+    <script src="{{ get_config('config_url') }}/assets/alert/alert.js"></script>
+    <link href="{{ get_config('config_url') }}/assets/font-awesome/css/font-awesome.min.css" rel="stylesheet"
+          type="text/css">
+    <style type="text/css">
+        @media print {
+            #print {
+                display: none !important;
+            }
+
+            #label_container {
+                border: none !important;
+            }
+        }
+    </style>
+{% endblock %}
+{% block header %}{% endblock %}
+{% block belly %}
+    <div id="label_container">
+        {{ label_html|raw }}
+    </div>
+    <button id="print" type="button">print</button>
+{% endblock %}
+{% block layoutjs %}{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        /* require window.channel_always_on */
+        (function ($) {
+            var order_id = '{{ order_id }}';
+            $('#print').click(function () {
+                window.print();
+                setTimeout(function () {
+                    if (confirm('print success?')) {
+                        channel_always_on.post('mark_as_label_printed', [order_id], function (resp) {
+                            if (resp) {
+                                alert('order marked');
+                            } else {
+                                alert('fail');
+                            }
+                        });
+                    }
+                }, 1000);
+            });
+        })(jQuery);
+    </script>
+{% endblock %}

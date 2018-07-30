@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Synclist: ebay amazon etsy api || seller tools">
+    <meta name="author" content="resgef.com">
+    <META NAME="ROBOTS" CONTENT="NOINDEX">
+    {% block page_title %}
+        <title>synclist</title>
+    {% endblock %}
+    {% block includes %}
+        <!-- react development, do not use these in production -->
+        <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+        <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+        <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+        <!--
+        To set up a production-ready React build environment, follow these instructions:
+          * https://reactjs.org/docs/add-react-to-a-new-app.html
+          * https://reactjs.org/docs/add-react-to-an-existing-app.html
+
+          You can also use React without JSX, in which case you can remove Babel:
+          * https://reactjs.org/docs/react-without-jsx.html
+          * https://reactjs.org/docs/cdn-links.html
+        -->
+        <!-- end react development -->
+
+        <script src="{{ root_url() }}assets/base.js"></script>
+        <script src="{{ root_url() }}assets/jquery/jquery-1.11.1.min.js"></script>
+        <script src="{{ root_url() }}assets/jquery/jquery.extra.js"></script>
+        <script src='{{ root_url() }}assets/momentjs/moment.min.js'></script>
+        <script src='{{ root_url() }}assets/momentjs/mods.moment.js'></script>
+        <script src="{{ root_url() }}assets/underscore/underscore.min.js"></script>
+        <script src="{{ root_url() }}assets/underscore/underscore.string.js"></script>
+        <script src="{{ root_url() }}assets/underscore/underscore.extra.js"></script>
+        <script src="{{ root_url() }}assets/bootstrap/js/bootstrap.min.js"></script>
+        <script src="{{ root_url() }}assets/livecomm/livecomm.js"></script>
+        <script src="{{ root_url() }}assets/monitor/monitor.js"></script>
+        <script src="{{ root_url() }}assets/alert/alert.js"></script>
+        <script src='{{ root_url() }}assets/DataTables/media/js/jquery.dataTables.min.js'></script>
+        <script src='{{ root_url() }}assets/reactivejquery/reactivejquery.js'></script>
+
+        <link rel="stylesheet" type="text/css"
+              href='{{ root_url() }}assets/DataTables/media/css/jquery.dataTables.min.css'>
+        <link href='{{ root_url() }}assets/bootstrap/css/bootstrap.min.css' rel="stylesheet">
+        <link href='{{ root_url() }}assets/css/style.css' rel="stylesheet">
+        <link href="{{ root_url() }}assets/font-awesome/css/font-awesome.min.css" rel="stylesheet"
+              type="text/css">
+    {% endblock %}
+    <script>
+        (function (i, s, o, g, r, a, m) {
+            i['GoogleAnalyticsObject'] = r;
+            i[r] = i[r] || function () {
+                (i[r].q = i[r].q || []).push(arguments)
+            }, i[r].l = 1 * new Date();
+            a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+            a.async = 1;
+            a.src = g;
+            m.parentNode.insertBefore(a, m)
+        })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+
+        ga('create', 'UA-93928936-1', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+    <script type="text/javascript">
+        /* @type {YAJRPCchannel_alwayson} */
+        window.channel_always_on = livecomm.connect('{{ url('api/livecomm') }}');
+        channel_always_on.set_opt({
+            sync_interval: 4000
+        });
+        channel_always_on.response_code_callbacks[302] = function () {
+            console.log('login required');
+            window.location.href = '{{ url('user/login') }}';
+        };
+        //channel_always_on.stop_auto();
+    </script>
+</head>
+<body>
+<div class="container-fluid">
+    {% block header %}
+        <div class="row" style="padding-top: 10px; padding-bottom: 10px">
+            <div class="col-xs-6 col-sm-9"></div>
+            <div class="col-xs-2 col-sm-1" id="notifications_react" style="position: relative">
+
+            </div>
+            {#
+            <div class="col-xs-2 col-sm-1 dropdown notification">
+                <a href="#" title="notifications" role="button" class="glyphicon glyphicon-bell dropdown-toggle"
+                   data-toggle="dropdown">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-right" id="notification_dropdown">
+                    <li><a href="{{ url('logs/logs/logs') }}">cron logs</a>
+                        <ul id="cronlogs">
+
+                        </ul>
+                    </li>
+                    <li><a href="{{ url('logs/logs/logs') }}">other logs</a>
+                        <ul id="otherlogs">
+
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            #}
+            <div class="col-xs-2 col-sm-1">
+                <a href="{{ url('user/login/logout') }}" title="logout" class="glyphicon glyphicon-off pull-right"
+                   style="text-decoration: none; color: black"></a>
+            </div>
+        </div>
+    {% endblock %}
+    {% block belly %}
+        <div class="row">
+            <div class="col-xs-6 col-sm-3 col-lg-2" style="position: relative">
+                <div class="logo-container">
+                    <a href="{{ url('common/home') }}">
+                        <img src="{{ root_url() }}assets/images/logo.png"
+                             alt="{{ get_config('site_name') }}" class="logo">
+                    </a>
+                </div>
+                <div class="nav" style="">
+                    <ul style="font-family: Arial, sans-serif;">
+                        <li><a href="{{ url('local/inventory') }}">local inventory</a></li>
+                        <li>
+                            <a role="button">remote listing</a>
+                            <ul>
+                                {% set stores = model('remote/listings/index') %}
+                                {% for provider,seller_names in stores %}
+                                    {% for name in seller_names %}
+                                        {% set count = model('remote/listings/count_active_items', [name, provider]) %}
+                                        <li>
+                                            <a href="{{ url('listing/items') }}&seller={{ name }}&listing_provider={{ provider }}">{{ provider }} {{ name }}
+                                                <span class="badge">{{ count }}</span></a>
+                                        </li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        <li>
+                            <a role="button">filters</a>
+                            <ul id="left_filterlist">
+                                {% set filters = api('Orders/all_filters') %}
+                                {% for f in filters %}
+                                    <li>
+                                        <a href="{{ url('order/filter') }}&filter_id={{ f.id }}">{{ f.title }} <span
+                                                    class="badge" id="filter_{{ f.id }}_orderscount"></span></a>
+                                    </li>
+                                {% endfor %}
+                                <li><a href="{{ url('order/filter') }}">create filter</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a role="button">search</a>
+                            <ul>
+                                <li><a href="{{ url('order/search/transactions') }}">transactions [shipment]</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a role="button">remote</a>
+                            <ul>
+                                <li><a href="{{ url('remote/upload_tracking') }}">upload tracking code</a></li>
+                                <li><a href="{{ url('remote/link_account/ebay') }}">link ebay account</a></li>
+                                <li><a href="{{ url('remote/link_account/etsy') }}">link etsy account</a></li>
+                                <li><a href="{{ url('remote/link_account/lob_address_verification') }}">link Lob AV
+                                        account</a></li>
+                            </ul>
+                        </li>
+                        <li><a role="button">shipping label</a>
+                            <ul>
+                                <li><a href="{{ url('shipping/label/template_editor') }}">editor</a></li>
+                                {% set label_templates = api('ShippingLabel/get_list',[]) %}
+                                {% for t in label_templates %}
+                                    <li>
+                                        <a href="{{ url('shipping/label/template_editor') }}&id={{ t.id }}">{{ t.title }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    </ul>
+                    <div class="small" id="version" style="">version: {{ get_config('version') }}</div>
+                </div> <!-- END .nav -->
+            </div> <!-- END sidebar -->
+            <div class="col-xs-6 col-sm-9 col-lg-10">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    {% endblock belly %}
+    {% block footer %}
+
+    {% endblock %}
+
+    {% block layoutjs %}
+        <script type="text/javascript">
+            /* require jQuery */
+            /* require livecomm.js */
+            /* require monitor.js */
+            (function ($) {
+                var version = "{{ get_config('version') }}";
+                var version_timestamp = "{{ get_config('version_timestamp') }}";
+                var last_updated = moment.unix(version_timestamp).fromNow();
+                console.log('version: ' + version + ' last upgade: ' + last_updated);
+                $('#version').append("<div>last upgrade: " + last_updated + "</div>");
+
+                // var notification = livecomm.element.initFromSelector('#notification_dropdown', channel_always_on, function () {
+                //     this.last_id = null;
+                //     this.build_request = function () {
+                //         return this.last_id;
+                //     };
+                //     this.process_response = function (response) {
+                //         this.last_id = response.last_id;
+                //         var cronlogs = response.cronlogs;
+                //         var otherlogs = response.otherlogs;
+                //         var _this = this;
+                //         $.each(cronlogs, function (i, entry) {
+                //             _this.push(entry.log, entry.time, 'cronlogs');
+                //         });
+                //         $.each(otherlogs, function (i, entry) {
+                //             _this.push(entry.log, entry.time, 'otherlogs');
+                //         });
+                //     };
+                //     this.push = function (log_text, log_time, id) {
+                //         log_time = moment().fromUTC(log_time).fromNow();
+                //         var id_sel = '#' + id;
+                //         if ($(id_sel + ' li').length >= 5) {
+                //             $(id_sel + ' li:first-of-type').remove();
+                //         }
+                //         $(id_sel).append('<li class="small"><a href="#">[' + log_time + '] ' + log_text + '</a></li>');
+                //     };
+                //     this.subscribe = function () {
+                //         var element = this;
+                //         this.channel.subscribe('notification')
+                //             .set_request_filter(function () {
+                //                 return element.build_request();
+                //             })
+                //             .deliver_this_way(function (resp) {
+                //                 element.process_response(resp);
+                //             });
+                //     };
+                // });
+
+                var filters_menu = livecomm.element.initFromSelector('#left_filterlist', channel_always_on, function () {
+                    this.filters_info = {};
+                    this.subscribe = function () {
+                        var element = this;
+                        this.channel.subscribe('filters_info')
+                            .set_request_filter(function () {
+                                return "";
+                            })
+                            .deliver_this_way(function (response, error) {
+                                element.process_response(response);
+                            });
+                    };
+                    this.process_response = function (response) {
+                        var element = this;
+                        $.each(response, function (i, filter_info) {
+                            var id = filter_info.filter_id;
+                            var count = filter_info.orders_count;
+                            if (element.filters_info.hasOwnProperty(id) && (element.filters_info[id] == count)) {
+                                //_console.log('no change');
+                            } else {
+                                element.filters_info[id] = count;
+                                var selector = '#' + element.filterid_to_domid(id);
+                                $(selector).text(count);
+                            }
+                        });
+                    };
+                    this.filterid_to_domid = function (filter_id) {
+                        return 'filter_' + filter_id + '_orderscount';
+                    };
+                });
+            }(jQuery));
+        </script>
+        {% verbatim %}
+        <script type="text/babel">
+            function Notificationentry(props) {
+                return <li><a style={{'max-width': '500px'}} className="small">[{props.date}] {props.text}</a></li>;
+            }
+            function Logs(props) {
+                return <ul style={{padding:0}}>
+                    {
+                        props.logs.map(
+                            (logentry) => <Notificationentry key={logentry.id} date={moment().fromUTC(logentry.time).fromNow()} text={logentry.log}/>
+                        )
+                    }
+                </ul>;
+            }
+            function NotificationDropdown(props) {
+                if (props.active) {
+                    return <ul style={{ position: 'absolute', zIndex: 1000, backgroundColor: 'white', right: 0 }}>
+                        <li><a>cronlogs</a><Logs logs={props.cronlogs}/></li>
+                        <li><a>otherlogs</a><Logs logs={props.noncronlogs}/></li>
+                    </ul>;
+                } else {
+                    return "";
+                }
+            }
+            class Notification extends React.Component {
+                constructor(props) {
+                    super(props);
+                    this.state = {isOpen:false};
+                    this.toggleNotifications = this.toggleNotifications.bind(this);
+                    this.cronlogs = [];
+                    this.otherlogs = [];
+                }
+                toggleNotifications(event) {
+                    let _this = this;
+                    if (this.state.isOpen) {
+                        this.setState({isOpen:false});
+                    } else {
+                        channel_always_on.get('logs',[], function(data, error) {
+                            _this.cronlogs = data.cronlogs;
+                            _this.otherlogs = data.otherlogs;
+                            _this.setState({isOpen:true});
+                        });
+                    }
+                }
+                render() {
+                    return <div>
+                    <a title="notifications" role="button" onClick={this.toggleNotifications}><i className="glyphicon glyphicon-bell"></i></a>
+                    <NotificationDropdown active={this.state.isOpen} cronlogs={this.cronlogs} noncronlogs={this.otherlogs} />
+                    </div>;
+                }
+            }
+            ReactDOM.render(<Notification />, document.getElementById('notifications_react'));
+
+            // let last_log_id = null;
+            // channel_always_on.subscribe('logs').set_request_filter(function () {
+            //     return null;
+            // }).deliver_this_way(function (data, error) {
+            //     last_log_id = data.last_id;
+            //     //ReactDOM.render(<Notificationf cronlogs={data.cronlogs} noncronlogs={data.otherlogs}/>, document.getElementById('notifications_react'));
+            // });
+        </script>
+        {% endverbatim %}
+    {% endblock %}
+    {% block foot_javascript %}
+    {% endblock %}
+</div>
+</body>
+</html>

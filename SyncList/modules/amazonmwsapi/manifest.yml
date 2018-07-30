@@ -1,0 +1,10 @@
+version: '1'
+title: ''
+description: ''
+index_file: amazonmwsapi.php
+index_class: AmazonMWSApi
+require: 
+    synclist_module: null
+    composer: null
+path:
+    root: '%this_module_root%'

@@ -1,0 +1,29 @@
+{
+    "disable_all_cron": false,
+    "cron_list": [
+        {
+            "disabled": false,
+            "classname": "CronUpdateActiveListing",
+            "ebay_user": "hanksminerals",
+            "api_keys": "./ebaykeys_prod.json",
+            "debug": true,
+            "fetch_xml": true,
+            "retry_on_404": 3,
+            "save_xml": false,
+            "save_update": true,
+            "interval": "hourly @0"
+        },
+        {
+            "disabled": true,
+            "classname": "CronGetOrders",
+            "ebay_user": "hanksminerals",
+            "api_keys": "./ebaykeys_prod.json",
+            "debug": true,
+            "fetch_xml": true,
+            "retry_on_404": 3,
+            "save_xml": false,
+            "save_update": false,
+            "interval": "hourly @0"
+        }
+    ]
+}

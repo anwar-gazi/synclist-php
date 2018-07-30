@@ -1,0 +1,4 @@
+version: 1.0
+title: 
+index_file: 'ebayapiresponse.php'
+index_class: 'EbayApiResponse'

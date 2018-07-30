@@ -1,0 +1,132 @@
+{% extends 'common/layout.twig' %}
+{% block content %}
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div class="form-group">
+                <input class="form-control user-input" id="sales_rec"
+                       placeholder="ebay SalesRecordNumber" autocomplete="on">
+            </div>
+            <div class="form-group">
+                <input class="form-control user-input" id="tracking_code" placeholder="tracking code" autocomplete="on">
+                <i class="fa fa-spin fa-spinner" id="saving_spin" style="display:none"></i>
+            </div>
+            <div class="form-group">
+                <input class="form-control" value="USPS" id="shipping_service" title="shipping service" readonly>
+            </div>
+            <div class="form-group">
+                <label>select account</label>
+                <div>
+                    {% for key_info in api_keys_info %}
+                        <input type="radio" class="" name="remote_provider" title="remote provider" data-id="{{ key_info.id }}"
+                               data-provider="{{ key_info.provider }}" data-account_name="{{ key_info.account_name }}">
+                        <label>{{ key_info.provider }} {{ key_info.account_name }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="small">
+                <p>*ebay: when you update the SalesRecordNumber of a completed shipment, the shipped time gets changed
+                    to the time of your action</p>
+                <p>*etsy: you cannot update tracking codes for completed shipments, for that case its likely that http400 to be the response</p>
+                {#<p>*remote provider is determined this way: length(number)==5: eBay SalesRecordNumber, length(number)==9: Etsy OrderID(receipt_id)</p>#}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        /* require alert from alertjs */
+        /* require window.channel_always_on provided by layout */
+        /* require window.display */
+        /* global channel_always_on */
+        /* global display */
+
+        //var display = monitor.create('tracking code update monitor', '#debug_display');
+
+        /** {YAJRPCchannel_alwayson} channel_always_on */
+        // channel_always_on.stop_auto();
+
+        channel_always_on.listen('set_remote_tracking_code', function (data, error) {
+            $('#saving_spin').hide();
+
+            if (data.error) {
+                error += data.error;
+            }
+
+            if (error) {
+                notification.error(error, 10000);
+            }
+
+            if (data.success) {
+                notification.success('success', 5000);
+            }
+
+            if (data.msg) {
+                notification.log(data.msg, 5000);
+            }
+
+            if (data.more) {
+                notification.log(data.more);
+            }
+
+            $('#tracking_code').val('');
+            $('#sales_rec').val('');
+            $('#sales_rec').focus();
+        });
+
+
+        $('#sales_rec').focus();
+
+        $('#sales_rec').keydown(function (event) {
+            if (event.keyCode == 13) {
+                // var val = $(event.target).val();
+                // if (val.length == 9) {
+                //     $('#remote_provider').val('etsy');
+                //     $(event.target).parent().removeClass('has-error');
+                //     $(event.target).parent().addClass('has-success');
+                // } else if (val.length >= 5 && val.length < 9) {
+                //     $('#remote_provider').val('ebay');
+                //     $(event.target).parent().addClass('has-success');
+                //     $(event.target).parent().removeClass('has-error');
+                // } else {
+                //     $(event.target).parent().removeClass('has-success');
+                //     $(event.target).parent().addClass('has-error');
+                //     $('#remote_provider').val('cannot identify remote provider');
+                // }
+
+                $('#tracking_code').focus();
+            }
+        });
+
+        //save
+        $('#tracking_code').keydown(function (event) {
+            var sales_rec_num = $('#sales_rec').val();
+            var tracking = $(event.target).val();
+
+            if ($('[name="remote_provider"]:checked').length) {
+                var api_key_info = {
+                    provider: $('[name="remote_provider"]:checked').attr('data-provider'),
+                    id: $('[name="remote_provider"]:checked').attr('data-id'),
+                    account_name: $('[name="remote_provider"]:checked').attr('data-account_name')
+                };
+            } else {
+                api_key_info = null;
+            }
+            if (!api_key_info) {
+                notification.error('choose a remote provider');
+                return false;
+            }
+
+            var shipping_service = $('#shipping_service').val();
+            if (event.keyCode == 13) {
+                if (!sales_rec_num || !tracking) {
+                    var which = !sales_rec_num ? 'sales record number' : 'tracking code';
+                    notification.error('Error: ' + which + ' empty!');
+                    return;
+                }
+                $('#saving_spin').show();
+
+                channel_always_on.emit('set_remote_tracking_code', [api_key_info, sales_rec_num, tracking, shipping_service]);
+            }
+        });
+    </script>
+{% endblock %}

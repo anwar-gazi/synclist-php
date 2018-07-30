@@ -1,0 +1,92 @@
+{% extends 'common/layout.twig' %}
+{% block content %}
+    <div class="page-header">
+        <h1>Ebay API Key management</h1>
+    </div>
+    <div>
+        <table class="table table-bordered table-responsive">
+            <thead>
+            <tr>
+                <th>name</th>
+                <th>url</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for apikeys in all_ebay_api_keys %}
+                <tr>
+                    <td>{{ apikeys.account_name }}</td>
+                    <td>{{ apikeys.serverUrl }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            insert new api key
+        </div>
+        <div class="panel-body">
+            <div>
+                {% if msg %}
+                    <div class="alert-success">{{ msg }}</div>
+                {% endif %}
+                {% if error %}
+                    <div class="alert-danger">{{ error }}</div>
+                {% endif %}
+            </div>
+            <form action="" method="post">
+                <div class="form-group">
+                    <label for="account_name">account name</label>
+                    <input class="form-control" id="account_name" type="text" name="account_name"
+                           value="{{ form.account_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="serverUrl">sandbox or production?</label>
+                    <select name="serverUrl" id="serverUrl" class="form-control">
+                        {% set sandbox_url = get_config('ebay_api')['serverUrl_sandbox'] %}
+                        {% set prod_url = get_config('ebay_api')['serverUrl_production'] %}
+                        <option value="{{ prod_url }}" {% if form.serverUrl==prod_url %} selected {% endif %}>production
+                            : {{ prod_url }}
+                        </option>
+                        <option value="{{ sandbox_url }}" {% if form.serverUrl==sandbox_url %} selected {% endif %}>
+                            sandbox
+                            : {{ sandbox_url }}
+                        </option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="requestToken">request token(user token)</label>
+                    <textarea name="requestToken" id="requestToken" class="form-control"
+                              required>{{ form.requestToken|raw }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="devID">dev id</label>
+                    <input type="text" name="devID" value="{{ form.devID }}" id="devID" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="appID">app id</label>
+                    <input type="text" name="appID" value="{{ form.appID }}" id="appID" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="certID">cert id</label>
+                    <input type="text" name="certID" value="{{ form.certID }}" id="certID" class="form-control"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="compatLevel">compatLevel</label>
+                    <input type="text" name="compatLevel" value="{{ get_config('ebay_api')['compatLevel'] }}"
+                           id="compatLevel"
+                           class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="siteID">siteID</label>
+                    <input type="text" name="siteID" value="{{ get_config('ebay_api')['siteID'] }}" id="siteID"
+                           class="form-control" readonly> : {{ get_config('ebay_api')['SiteCode'] }}
+                </div>
+                <button type="submit" name="submit" class="btn btn-default">submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock content %}
+{% block foot_javascript %}
+{% endblock foot_javascript %}

@@ -1,0 +1,36 @@
+you dont need to manually rename or copy any config files.
+use the build script with appropriate config json rules.
+the system uses config.json, and any other config-*.json(config-test.json, config-prod.json) are for you for reference purpose and for build script.
+
+here we maintain two types of config files, php and json.
+
+php config files contain mainly constants so that they cannot be changed in runtime,
+if not constants, its a hassle to incoude them from inside a function because of the global vars issue.
+it gets dirty too, for putting php variables instead of constants and manage them runtime .... fuck.
+
+again managing numerous constants makes system very static and changing any config or reloading if sometimes necessary, becomes impractical.
+
+So we maintain json file for config variables.
+
+json config variables doc:
+=========================
+
+"debug":
+--------
+show debug info
+
+"ebay_user":
+------------
+the ebay user to fetch for
+
+"fetch_xml":
+------------
+actually fetch any xml. if this is false, then the api classes will try to load a similar xml from the filesystem.
+
+"save_xml":
+-----------
+save the xml file after fetching, this variable will be ignored if fetch_xml is false
+
+"save_update":
+--------------
+save updates after fetching and parsing xml files. this variable will be ignored if fetch_xml is false

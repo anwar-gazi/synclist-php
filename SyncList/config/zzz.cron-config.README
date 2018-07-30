@@ -1,0 +1,54 @@
+you must specify a cron config here, otherwise cron will not run.
+you can specify the cron code class, class container filename, cron interval.
+json properties:
+
+"escape_this_config": [true/false]
+--------------------------------
+dont parse this config file
+
+"disable_all_cron": [true/false]
+------------------------------
+dont run any cron defined in the file
+
+"cron_list": [Object]
+---------------------
+each cron definition resides under a property here, the proprty name is the cron name, this name you choose as you wish
+
+"cron_list".<your-cron-name>: [Object]
+--------------------------------------
+the cron name you choose. If you dont provide the cron property "file", 
+then this cron name will be use as both filename and class name(inside that file), 
+file is realtive to this config file directory
+
+"cron_list".<your-cron-name>."disable_this": [true/false]
+---------------------------------------------------------
+run/dont run this cron
+
+"cron_list".<your-cron-name>."file":
+------------------------------------
+if dont want the cron name as the file name(and the class inside that file too),
+or cron name is same as class name but you palced the file elsewhere(instead of the root of the directory the config file is in),
+then you specify the file name;
+if the file contained a different class(containg your cron code) then the cron name,
+then you must specify the "cron_list".<your-cron-name>."class" property too
+if the file contained class and cron name is same, but the file is not in the root if the cron config container folder,
+then you specify by . or .. 
+example: if the cron file is mycron.php and placed one level up the cron config directory, then ../mycron.php,
+if it is placed inside a folder name sample inside the cron config container folder , then 
+./sample/mycron.php
+
+"cron_list".<your-cron-name>."interval": string
+[hourly @<minute>]
+[daily @<24-or-12-hourly-time>]
+[weekly @< 3 character-week-day><space><24-or-12-hourly-time>]
+[monthly @<day-position-in-the-month><one-space><24-or-12-hourly-time>]
+[yearly @<3-character-month-name><one-space><day-position-in-the-month><one-space><24-or-12-hourly-tme>]
+[once]
+
+examples:
+"hourly @30" 
+"daily @5pm"
+"weekly @Sat-5pm"
+"monthly @12 5pm"
+"yearly @Jan day12 5pm"
+"once"

@@ -1,0 +1,69 @@
+{% extends "common/layout.twig" %}
+{% block includes %}
+    {{ parent() }}
+{% endblock %}
+{% block page_title %}
+    <title>order search</title>
+{% endblock %}
+{% block content %}
+    <div id="search" class="panel panel-default">
+        <div class="panel-heading"></div>
+        <div class="panel-body">
+            <div class="form-group" id="search_form">
+                <select name="type" class="form-control" title="type">
+                    <option value=""></option>
+                    <option value="order_hash">order#</option>
+                    <option value="local_order_id">local order#</option>
+                    <option value="buyer_name">buyer name</option>
+                </select>
+                <input type="text" name="search" title="search" class="form-control">
+            </div>
+            <div id="search_result">
+            </div>
+        </div>
+    </div>
+    <div class="hidden-code" style="display: none">
+        <code class=""></code>
+    </div>
+{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        /* global channel_always_on */
+        /* global ReactiveElement */
+        /* global notification */
+        /* global Inventory */
+        (function ($) {
+            var page = new ReactiveElement('#order_filter_page', function () {
+                
+            });
+            page.search = new ReactiveElement('div#search', function () {
+                var result_elem = this.element().find('div#search_result');
+                var search_elem = this.element().find('[name="search"]');
+                var type_elem = this.element().find('[name="type"]');
+                channel_always_on.listen('search_order', function(orders, error) {
+                    
+                });
+                type_elem.change(function(event) {
+                    if ($(event.target).val()) {
+                        search_elem.focus();
+                    }
+                });
+                search_elem.keydown(function (event) {
+                    if (event.keyCode == 13) { //we accept only Enter keypress
+                        var needle = $(event.target).val();
+                        var type = type_elem.val();
+                        if (!needle) {
+                            return false;
+                        }
+                        if (!type) {
+                            notification.error("select search type");
+                            return false;
+                        }
+
+                        channel_always_on.emit('search_order', [needle, type]);
+                    }
+                });
+            });
+        }(jQuery));
+    </script>
+{% endblock %}

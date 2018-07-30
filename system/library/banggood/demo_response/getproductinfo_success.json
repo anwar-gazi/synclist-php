@@ -1,0 +1,31 @@
+{
+  "code": 0,
+  "weight": 0.65,
+  "product_name": "Digoo Series Goods",
+  "poa_list": [
+    {
+      "option_id": 1,
+      "option_name": "Color",
+      "option_values": [
+        {
+          "poa_id": "15219",
+          "poa_name": "Pure white",
+          "poa": "POA1072154",
+          "poa_price": "0.0000",
+          "large_image": "http://img.banggood.com/er.jpg"
+        }
+      ]
+    }
+  ],
+  "warehouse_list": [
+    {
+      "warehouse": "CN",
+      "warehouse_price": "19.95"
+    }
+  ],
+  "description": {
+    "large": "http://img.banggood.com/th.jpg"
+  },
+  "image_list": {},
+  "lang": "en"
+}

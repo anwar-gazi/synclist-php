@@ -1,0 +1,112 @@
+{% extends "common/layout.twig" %}
+{% set assets_url = get_config('config_url')+'/assets/' %}
+{% block includes %}
+    {{ parent() }}
+    <!-- insert your style here inside the tag -->
+    <style type="text/css">
+        #page-wrapper {
+            margin: 0;
+        }
+
+        .nav {
+            display: none;
+        }
+
+        input {
+            font-size: 30pt;
+            width: 50% !important;
+        }
+    </style>
+{% endblock %}
+{% block page_title %}
+    <title>search transactions</title>
+{% endblock %}
+{% block belly %}
+    <a href="{{ url('common/home') }}" class="glyphicon glyphicon-arrow-left" style="color: black; position: absolute"> home</a>
+    <div class="row">
+        <div class="form-group">
+            <input type="text" name="quick_search_ebay_etsy_orders" class="form-control"
+                   style="font-size: 30pt; width: 100% !important; height: auto">
+            <span class="matched_orders_count"></span>
+        </div>
+    </div>
+    <div id="orders_listing">
+    </div>
+    <footer>
+    </footer>
+{% endblock %}
+{% block foot_javascript %}
+    <script type="text/javascript">
+        channel_always_on.stop_auto();
+        channel_always_on.set_console(display);
+        /* require underscorejs */
+        var search_elem = $('[name="quick_search_ebay_etsy_orders"]');
+
+        search_elem.focus();
+
+        // now search for transactions,
+        // ebay via sales rec num, etsy via etsy order id(which is etsy's receipt id)
+        search_elem.on('change', function (event) {
+            var needle = $(event.target).val();
+            // if no value, clear the result too
+            if (!needle) {
+                $('div#orders_listing').empty();
+                return;
+            }
+
+            // search in the server via api request
+            var loading = $('<br><i class="fa fa-spin fa-spinner"></i>');
+            search_elem.after(loading);
+
+            channel_always_on.listen('search_transactions', function (data, error) {
+                if (!data.hasOwnProperty('transactions')) {
+                    alert('IncompleteResponseError: response has no property as `transactions`');
+                    loading.remove();
+                    return;
+                }
+
+                var results = data.transactions;
+                // log in server via api req
+                if (_.size(results)) {
+                    api("{{ url('api/synclist') }}")('Orders', 'log_search_history', ['searched for ' + needle + ', ' + _.size(results) + ' transactions matched!'], function () {
+                        console.log('search criteria logged!');
+                    }, function () {
+                        alert('search log failed!');
+                        console.warn("search log failed!");
+                    });
+                }
+
+                // compile and show the listing html,
+                // only compile when result exist, empty table view is a hassle
+                $('div#orders_listing').html('<div class="search_result"><h4 style="display:inline">' + _.size(results) + ' transactions' + '</h4></div>');
+                $('div.search_result').append(function () {
+                    return (_.size(results) ? compile_transactions_listing(results) : '');
+                });
+                loading.remove();
+                $("html, body").animate({scrollTop: $(document).height()}, 6000);
+            });
+
+            channel_always_on.emit('search_transactions', needle);
+
+            return false;
+        });
+
+        // we had issues with twigjs, thats why compiling views in such crude ways
+        var compile_transactions_listing = function (transactions) {
+            var html = '<table class="table table-bordered">';
+            html += '<thead><tr><th>record</th><th>item image</th><th>Item</th><th>option</th><th>Quantity</th><th>buyer</th></tr></thead><tbody>';
+            $.each(transactions, function (oi, trans) {
+                html = html +
+                    '<tr>' +
+                    '<td style="font-size:10pt;">' + trans.sales_rec_num + '</td>' +
+                    '<td><a href="' + trans.item_url + '" target="_blank"><img src=' + trans.pic_url + ' alt="item image" style="height: 100px; width: 100px;"></a></td>' +
+                    '<td style="font-size:20pt;">#' + trans.itemid + ' ' + trans.itemtitle + '</td>' +
+                    '<td style="font-size:20pt;">' + ((trans.listing_provider == 'ebay') ? '' : trans.option.replace(',', '<br>')) + '</td>' +
+                    '<td style="font-size:60pt;">' + trans.qty + '</td>' +
+                    '<td style="font-size:20pt;">' + trans.ship_to + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            return html;
+        };
+    </script>
+{% endblock %}

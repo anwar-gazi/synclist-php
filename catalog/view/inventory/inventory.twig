@@ -1,0 +1,237 @@
+{% extends "common/layout.twig" %}
+{% block includes %}
+    {{ parent() }}
+    <script src='{{ root_url() }}assets/progressbar/progressbar.js'></script>
+    <script src='{{ root_url() }}assets/api_request/api_request.js'></script>
+    <script src='{{ root_url() }}assets/superselect/superselect.js'></script>
+    <script src='{{ root_url() }}assets/inventory/inventory-full.js'></script>
+
+    <link rel="stylesheet" type="text/css" href='{{ root_url() }}assets/inventory/inventory.css'>
+    <link rel="stylesheet" type="text/css" href='{{ root_url() }}assets/superselect/superselect.css'>
+{% endblock %}
+{% block page_title %}
+    <title>local inventory</title>
+{% endblock %}
+{% block content %}
+    <div>
+        <div class="clearfix">
+        </div>
+        <div id="all_inv_items_table_container">
+            {% if cronlog_errors %}
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#cronlog_errors">cron errors</button>
+                <div class="has-error modal fade" id="cronlog_errors" role="dialog">
+                    {{ cronlog_errors }}
+                </div>
+            {% endif %}
+            <div class="inventory-listing panel panel-default">
+                <div class="panel-heading">
+                    Inventory Items
+                    <button type="button" name="new_inventory" class="btn btn-default pull-right">add new</button>
+                </div>
+                <div class="panel-body">
+                    <div class="dataTable_wrapper">
+                        <table class="table inventory_listing" id="inv_listing">
+                            <thead>
+                            <tr>
+                                <th>Item name</th>
+                                <th data-orderable="false">Quantity</th>
+                                <th data-orderable="false">Sold</th>
+                                <th data-orderable="false">Balance</th>
+                                <th data-orderable="false">Linked items</th>
+                                <th data-orderable="false">Sync setting</th>
+                                <th data-orderable="false">Avg sold<br>per day</th>
+                                <th data-orderable="false">estd days<br>in stock</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in items %}
+                                <tr class="gradeX each_inventory_item" id="invitem_{{ item.inventory_itemid }}">
+                                    <td class="title">
+                                        <a class="view_inv_item btn" role="button"
+                                           id="{{ item.inventory_itemid }}">{{ item.title }}</a>
+                                    </td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>
+                                        {% if item._soldout %}
+                                            <i class="red">sold out</i>
+                                        {% else %}
+                                            {{ item._sold }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item._balance }}</td>
+                                    <td>{{ item.linked_items|length }}</td>
+                                    <td>
+                                        <input type="checkbox" class="invitem_sync_setting"
+                                               data-invid="{{ item.inventory_itemid }}"
+                                               value="1" {% if item.sync==1 %}checked{% else %}{% endif %}
+                                               title="sync local stock to remote" style="margin-right: 10px">
+                                        {% if item.sync and not item._synced %}
+                                            <span class="sync-error">
+                                            <i class="red">sync error</i>
+                                                {#<button type="button" class="invitem_sync_retry" data-invid="{{ item.synced }}">retry</button>#}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="avg_sold">
+                                        {% if item.avg_sold_per_day %}
+                                            {{ item.avg_sold_per_day }}
+                                        {% else %}
+                                            NA
+                                        {% endif %}
+                                    </td>
+                                    <td class="etd">
+                                        {% if item.etd_days_in_stock %}
+                                            {% if item.etd_days_in_stock<=0 and item.avg_sold_per_day>0 %}
+                                                <i class="red">0</i>
+                                            {% else %}
+                                                {{ item.etd_days_in_stock }}
+                                            {% endif %}
+                                        {% else %}
+                                            NA
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="display: none">
+        <code id="invitem">{{ load_view('inventory/inventory_item.twig',{'listing_items':api('Listing/items')})|raw }}</code>
+        <code id="lnitem">{{ tpl_source('inventory/linked_item_panel.twig')|raw }}</code>
+    </div>
+{% endblock %}
+
+    {% block foot_javascript %}
+        <script type="text/javascript">
+            //            channel_always_on.stop_auto();
+            /* global Inventory */
+            /* global api_url */
+            /* global s */
+            /* global _ */
+            /* assume global [communicationDevice] comm[.always_on] provided by the layout */
+            (function (Inv, $) {
+                $('div#all_inv_items_table_container table').DataTable({
+                    'bPaginate': false
+                });
+
+                var inv_item_tpl = $('code#invitem').html();
+                var linked_item_panel_tpl = $('code#lnitem').html();
+                var ii = Inv.module('Inventoryitem');
+                ii.save_handler = function () {
+                    channel_always_on.post('save_inventory', [this.id(), this.title(), this.linked_items(), this.list_calc_inputs()], function (result) {
+                        if (result.success) {
+                            //window.location.reload(true);
+                            notification.success('success!');
+                            notification.log(result.messages.join('<br>'), 10000, null, function () {
+                                alert('please reload the page');
+                            });
+                        } else {
+                            alert('Error: {}'.format(result.error));
+                        }
+                    });
+                };
+                ii.delete_handler = function (id) {
+                    channel_always_on.request('delete_inv_item', [id], function (success) {
+                        if (success) {
+                            window.location.reload(true);
+                        } else {
+                            alert('delete fail');
+                        }
+                    });
+                };
+
+                //var page_loading = $('<i class="fa fa-spinner fa-5x "></i>').modal();
+                channel_always_on.request('inv_page_cache', [], function (result) {
+                    var inventory_items = result.inv_items;
+                    var listing_items = result.listing_items;
+
+                    //render listing dropdown select into superselect
+                    var inv_item = $(inv_item_tpl);
+                    inv_item.find('select[name="listing_items"]').superselect({
+                        removeSelect: true
+                    });
+                    inv_item_tpl = inv_item.get(0).outerHTML;
+
+                    Inv.module('database').set_items(inventory_items, listing_items).set_tpl(inv_item_tpl, linked_item_panel_tpl);
+
+                    window.channel_always_on.subscribe('cronstate')
+                        .set_request_filter()
+                        .deliver_this_way(function (resp) {
+                            if (!resp || $.isEmptyObject(resp)) {
+                                return false;
+                            } else {
+                                var completed = parseInt(resp.percent);
+                                var note = resp.note;
+                                var name = resp.name;
+                                document.title = completed + '%';
+                                progress(name, completed, note);
+                            }
+                        });
+
+                    $(document).on('keyup', 'div.inventory-modal [name="title"]', function (event) {
+                        // show/hide the inventory create button
+                        if ($(event.target).validate()) { // input valid
+                            ii.load($(event.target).closest('div.inventory-modal')).saveButton().text('Create').show();
+                        }
+                    }).on('superselect.change', 'div.inventory-modal div.superselect-container', function (event, item) {
+                        // change in superselect dropdown
+                        ii.load($(event.target).closest('div.inventory-modal')).linkItem(listing_items[item.uniqid], 'not yet saved!');
+                    }).on('click', 'div.inventory-modal .removeItemPanel', function (event) {
+                        // remove item panel
+                        var itemPanel = $(event.target).closest('div.linked_item');
+                        var uniqid = itemPanel.find('label.item').attr('data-uniqid');
+                        ii.load($(event.target).closest('div.inventory-modal')).unlinkByItemPanel(itemPanel).SSElement().select(false, uniqid);
+                    }).on('keyup', 'div.inventory-modal input[name="multiply"]', function (event) {
+                        // linked item multiply input changed
+                        var multiply = $(event.target).val();
+                        if (parseInt(multiply) > 0) {
+                            $(event.target).siblings('.multiply_txt').text('multiplied by ' + parseInt(multiply));
+                        } else {
+                            $(event.target).val('').siblings('.multiply_txt').text('');
+                            return false;
+                        }
+                    }).on('click', 'div.inventory-modal [name="save_inventory"]', function (event) {
+                        var item = ii.load($(event.target).closest('div.inventory-modal'));
+                        item.save();
+                    }).on('click', 'div.modal [name="delete_inventory"]', function (event) {
+                        ii.load($(event.target).closest('div.inventory-modal')).delete();
+                    }).on('click', '[name="new_inventory"]', function () {
+                        // show new inventory form
+                        ii.load_tpl().draw();
+                    }).on('click', '.view_inv_item', function (event) {
+                        // view an inventory item
+                        var id = $(event.target).attr('id');
+                        var item = inventory_items[id];
+                        var invitem = ii.load_tpl().draw(item.id, item.title, item.quantity, item.linked_items);
+                        if (item.sync == 1) {
+                            invitem.saveButton().text(invitem.saveButton().text() + '(will affect remote stock too)');
+                        }
+                    }).on('click', '.invitem_sync_setting', function (event) {
+                        var invid = $(event.target).attr('data-invid');
+                        channel_always_on.post('inv_sync_setting', [invid, $(event.target).is(':checked')], function (resp) {
+                            if (resp) {
+                                alert('success, please reload page');
+                            } else {
+                                alert('fail!');
+                                event.preventDefault();
+                            }
+                        });
+                    }).on('click', '.invitem_sync_retry', function (event) {
+                        var invid = $(event.target).attr('data-invid');
+                        channel_always_on.post('inv_sync_retry', [invid], function (resp) {
+                            if (resp.success) {
+                                $(event.target).closest('.sync-error').remove();
+                                alert('success! please reload page!');
+                            } else {
+                                alert('Error: {}'.format(resp.error));
+                            }
+                        });
+                    });
+                });
+            }(Inventory, jQuery));
+        </script>
+    {% endblock %}

@@ -1,0 +1,15 @@
+{
+  "code": 0,
+  "page": 1,
+  "page_total": 6,
+  "cat_total": 2520,
+  "page_size": 500,
+  "lang": "en",
+  "cat_list": [
+    {
+      "cat_id": "22",
+      "cat_name": "iPod accessories",
+      "parent_id": "1696"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{% extends "common/layout.twig" %}
+{% block page_title %}
+    <title>listing</title>
+{% endblock %}
+{% block content %}
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <p>{{ seller }} {{ listing_provider }} {{ items|length }} items</p>
+        </div>
+        <div class="panel-body">
+            <div class="dataTable_wrapper">
+                <table class="table table-striped table-bordered table-hover" id="dataTables-example">
+                    <thead>
+                    <tr>
+                        <th data-orderable="false">Image</th>
+                        <th>Title</th>
+                        <th>sku</th>
+                        <th>quantity</th>
+                        <th>sold</th>
+                        <th>Balance</th>
+                        <th>Remote Status</th>
+                        <th>Synced</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in items %}
+                        <tr class="odd gradeX">
+                            <td>
+                                <img src="{{ item.pic_url }}" alt="item image" title="item image" class="img-thumbnail"
+                                     width="100" height="100">
+                            </td>
+                            <td>
+                                <a href="{{ item.item_url }}" title="{{ item.title }}" target="_blank">
+                                    {{ item.title }}
+                                </a>
+                            </td>
+                            <td class="center">{{ item.option }}</td>
+
+                            <td class="center">
+                                <a title="" data-toggle="tooltip">
+                                    {{ item.quantity }}
+                                </a>
+                            </td>
+
+                            <td class="">
+                                <a title="" data-toggle="tooltip">
+                                    {{ item.sold }}
+                                </a>
+                            </td>
+
+                            <td class="center">
+                                <a title="" data-toggle="tooltip">
+                                    {{ item.quantity-item.sold }}
+                                </a>
+                            </td>
+
+                            <td class="center">
+                                <a title="" data-toggle="tooltip">
+                                    {{ (item.active==1)?'active':'not active' }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if item.synced==1 %}
+                                    synced
+                                {% else %}
+                                    <i class="red">not synced</i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

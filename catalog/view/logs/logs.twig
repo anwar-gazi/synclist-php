@@ -1,0 +1,78 @@
+{% extends "common/layout.twig" %}
+{% block includes %}
+    {{ parent() }}
+    <script src='{{ get_config('config_url') }}/assets/sldatatable.js'></script>
+{% endblock %}
+{% block page_title %}<title>Logs</title>{% endblock %}
+{% block content %}
+    <div class="row" id="cronlogs">
+        <h2>Cron Logs</h2>
+        <table id="cronlogs_table">
+            <thead>
+            <tr>
+                <th>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    {{ log }}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="row" id="otherlogs">
+        <h2>Other Logs</h2>
+        <table id="otherlogs_table">
+            <thead>
+            <tr>
+                <th>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    {{ log }}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block foot_javascript %}
+    <script type="text/javascript">
+        (function ($) {
+            var ReactiveElement = function (selector, factory) {
+                this.element = $(selector);
+                factory.bind(this)();
+            };
+
+            var cronlogs = new ReactiveElement('#cronlogs', function () {
+                var cronlogs_dt = new SlDataTable($('#cronlogs_table'));
+                cronlogs_dt.row_builder(function (row) {
+                    return '<tr><td>' + row.log + ' ' + row.time + '[UTC] ' + moment().fromUTC(row.time).fromNow() + '</td></tr>';
+                }).ajax_paginator(function (start_index, end_index, callback) {
+                    channel_always_on.get('cronlogs', [start_index, end_index], function (resp) {
+                        callback(resp.rows, resp.total_rows_count);
+                    });
+                });
+                cronlogs_dt.show(1);
+            });
+            var otherlogs = new ReactiveElement('#otherlogs', function () {
+                var datatable = new SlDataTable($('#otherlogs_table'));
+                datatable.row_builder(function (row) {
+                    return '<tr><td>' + row.log + ' ' + row.time + '[UTC] ' + moment().fromUTC(row.time).fromNow() + '</td></tr>';
+                }).ajax_paginator(function (start_index, end_index, callback) {
+                    channel_always_on.get('otherlogs', [start_index, end_index], function (resp) {
+                        callback(resp.rows, resp.total_rows_count);
+                    });
+                });
+                datatable.show(1);
+            });
+        }(jQuery));
+    </script>
+{% endblock %}

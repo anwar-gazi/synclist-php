@@ -1,0 +1,4 @@
+version: 1.0
+title: ebay api request xml builder
+index_file: 'ebayapirequestxmlbuilder.php'
+index_class: 'EbayApiRequestXmlBuilder'

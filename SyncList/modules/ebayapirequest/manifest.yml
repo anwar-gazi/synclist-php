@@ -1,0 +1,10 @@
+version: 1.0
+title: ebay api request module
+index_file: ebayapirequest.php
+index_class: EbayApiRequest
+save_response: false
+path:
+    root:
+    save_dir: %module_root%/pulled_xml
+require:
+    synclist_module:

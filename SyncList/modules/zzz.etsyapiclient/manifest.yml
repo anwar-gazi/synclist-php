@@ -1,0 +1,8 @@
+version: 1.0
+title: etsy api request module
+index_file: etsyapiclient.php
+index_class: etsyApiClient
+path:
+    root:
+require:
+    synclist_module:

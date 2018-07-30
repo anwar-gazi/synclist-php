@@ -1,0 +1,59 @@
+<div class="modal inventory-modal fade container-fluid" role="dialog" style="overflow-y: scroll" data-backdrop="static" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <p class="action label label-default">new inventory item</p>
+            </div>
+            <div class="modal-body clearfix">
+                <div class="form-group">
+                    <input type="hidden" name="id"> <!-- use this to set/get inventory id -->
+                    <label class="control-label">Item title</label>
+                    <input title="item title" class="form-control" name="title" tabindex="1">
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Quantity</label>
+                    <input title="quantity" class="form-control" name="quantity" tabindex="1" readonly>
+
+                    {#<div class="inventory_plus_minus_buttons_div">#}
+                    {#<button type="button" name="inventory_plus_minus_calculator" class="btn btn-success"><i class="fa fa-calculator"></i></button>#}
+                    {#</div>#}
+                    <div class="inv-calculator">
+                        <ul class="calc-display" style="list-style-type: none">
+                        </ul>
+                        <div class="calc-control">
+                            <!-- data-type attribute is either plus or minus -->
+                            <input type="number" name="calc_input" class="calc_input" placeholder="number of items">
+                            <select title="calculation command" class="calc_command">
+                                <option value="">Reason</option>
+                                <option value="+">Recieved New shipment</option>
+                                <option value="-">Gift to other</option>
+                            </select>
+                            <button type="button" class="calc_ans">calculate</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <!-- this will be rendered into a superselect box -->
+                        <select name="listing_items" title="listing items">
+                            {% for item in listing_items %}
+                                <option value="{{ item.uniqid }}">[{{ item.listing_provider }} {{ item.account_name }}
+                                    ]{{ item.title }}{% if item.option %}, sku/option: {{ item.option }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="control-label">Linked store items: <span class="linked_items_count"></span></label>
+                    </div>
+                    <div class="panel-body col-md-12 linked_items"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="save_status pull-left">
+                </div>
+                <button type="button" class="btn btn-default pull-left btn-danger" name="delete_inventory"><span class="glyphicon glyphicon-trash"></span>
+                </button>
+                <button type="button" class="btn btn-default" data-dismiss="modal" name="cancel_inventory"><span class="fa fa-times"></span></button>
+                <button type="button" class="btn btn-primary save_inventory" name="save_inventory">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

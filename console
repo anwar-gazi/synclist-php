@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+$registry = require __DIR__ . '/boot.php';
+
+use Symfony\Component\Console\Application;
+
+$application = new Application();
+
+$application->add(new \Resgef\SyncList\Commands\DeployPhinx\DeployPhinxCommand($registry));
+$application->add(new \Resgef\SyncList\Commands\PhinxLogRemove\PhinxLogRemoveCommand($registry));
+$application->add(new \Resgef\SyncList\Commands\CurrentVersion\CurrentVersionCommand($registry));
+$application->add(new \resgef\synclist\commands\Cron\CronCommand($registry));
+$application->add(new \resgef\synclist\commands\getapiaccessrules\GetApiAccessRulesCommand($registry));
+$application->add(new \resgef\synclist\commands\resetordersfetchtime\ResetOrdersFetchTimeCommand($registry));
+
+$application->run();
